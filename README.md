@@ -1,2 +1,2 @@
 # npcap-zig
-Zig bindings for npcap
+zig build script for npcap
