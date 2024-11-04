@@ -25,9 +25,14 @@ pub fn build(b: *std.Build) void {
     packet.linkLibC(); // needs assert.h
     // work-around _Post_invalid_ being missing? something about sal.h headers.
     // https://github.com/xmake-io/xmake-repo/pull/5390
+
     packet.root_module.addCMacro("_Post_invalid_", "");
+
+    // missing identifier GAA_FLAG_SKIP_DNS_INFO, yeet
+    packet.root_module.addCMacro("GAA_FLAG_SKIP_DNS_INFO", "0x800");
     packet.addIncludePath(upstream.path("Common"));
     packet.addIncludePath(upstream.path("packetWin7/Dll"));
+    packet.addIncludePath(upstream.path(""));
     packet.addCSourceFiles(.{
         .root = upstream.path(""),
         .files = &.{
@@ -41,6 +46,7 @@ pub fn build(b: *std.Build) void {
             // "version.rc", and WTF are these?
             // "version.rc2",
         },
+        .flags = &.{"-Wno-comment"},
     });
     b.installArtifact(packet);
 }
