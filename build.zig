@@ -4,49 +4,49 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // const upstream_sdk = b.dependency("npcap_sdk", .{});
-    // const lib = b.addStaticLibrary(.{
-    //     .name = "npcap",
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-    // lib.addObjectFile(upstream_sdk.path("Lib/wpcap.lib"));
-    // lib.addObjectFile(upstream_sdk.path("Lib/Packet.lib"));
-    // lib.installHeadersDirectory(upstream_sdk.path("Include"), "", .{});
-    // b.installArtifact(lib);
+    const npcap_sdk = b.dependency("npcap_sdk", .{ .target = target, .optimize = optimize });
 
-    const upstream = b.dependency("npcap", .{});
-    const packet = b.addStaticLibrary(.{
-        .name = "Packet",
+    const npcap = b.addModule("npcap", .{
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
-    packet.linkLibCpp(); // needs #include <string>
-    packet.linkLibC(); // needs assert.h
-    // work-around _Post_invalid_ being missing? something about sal.h headers.
-    // https://github.com/xmake-io/xmake-repo/pull/5390
 
-    packet.root_module.addCMacro("_Post_invalid_", "");
-
-    // missing identifier GAA_FLAG_SKIP_DNS_INFO, yeet
-    packet.root_module.addCMacro("GAA_FLAG_SKIP_DNS_INFO", "0x800");
-    packet.addIncludePath(upstream.path("Common"));
-    packet.addIncludePath(upstream.path("packetWin7/Dll"));
-    packet.addIncludePath(upstream.path(""));
-    packet.addCSourceFiles(.{
-        .root = upstream.path(""),
-        .files = &.{
-            // "Common/Packet32.h",
-            // "Common/WpcapNames.h",
-            "packetWin7/Dll/AdInfo.cpp",
-            // "Packet.def", tf is a def file?
-            "packetWin7/Dll/Packet32-Int.h",
-            "packetWin7/Dll/Packet32.cpp",
-            "packetWin7/Dll/debug.h",
-            // "version.rc", and WTF are these?
-            // "version.rc2",
+    const packet_lib_path = switch (target.result.os.tag) {
+        .windows => switch (target.result.cpu.arch) {
+            .aarch64 => npcap_sdk.path("Lib/ARM64/Packet.lib"),
+            .x86_64 => npcap_sdk.path("Lib/x64/Packet.lib"),
+            .x86 => npcap_sdk.path("Lib/Packet.lib"),
+            else => unreachable,
         },
-        .flags = &.{"-Wno-comment"},
+        else => unreachable,
+    };
+    const wpcap_lib_path = switch (target.result.os.tag) {
+        .windows => switch (target.result.cpu.arch) {
+            .aarch64 => npcap_sdk.path("Lib/ARM64/wpcap.lib"),
+            .x86_64 => npcap_sdk.path("Lib/x64/wpcap.lib"),
+            .x86 => npcap_sdk.path("Lib/wpcap.lib"),
+            else => unreachable,
+        },
+        else => unreachable,
+    };
+
+    npcap.addObjectFile(packet_lib_path);
+    npcap.addObjectFile(wpcap_lib_path);
+    npcap.addIncludePath(npcap_sdk.path("Include/"));
+
+    const translate_c = b.addTranslateC(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .root_source_file = npcap_sdk.path("Include/pcap/pcap.h"),
     });
-    b.installArtifact(packet);
+    npcap.addImport("npcap_sdk", translate_c.createModule());
+
+    const lib_unit_tests = b.addTest(.{
+        .root_module = npcap,
+    });
+    const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_lib_unit_tests.step);
 }

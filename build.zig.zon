@@ -1,21 +1,17 @@
 .{
-    .name = "npcap",
-    .version = "0.0.0",
+    .name = .npcap,
+    .version = "1.15.0",
+    .fingerprint = 0xed6dc00e8ae2ae57, // Changing this has security and trust implications.
     .dependencies = .{
         .npcap_sdk = .{
-            .url = "https://npcap.com/dist/npcap-sdk-1.13.zip",
-            .hash = "12206001b370bb70f9dc47c846df6ad82725e4491650472dc7037c5e027792ba207e",
-        },
-        .npcap = .{
-            .url = "https://github.com/nmap/npcap/archive/refs/tags/v1.80.tar.gz",
-            .hash = "1220162947eb1d237d2eed84840f274f13d2fb87c05f7e349da2bf22dd4bcb573af2",
+            .url = "https://npcap.com/dist/npcap-sdk-1.15.zip",
+            .hash = "N-V-__8AAE5NFAA8jrTrZjfhTxjqbjp_IlCXqg-fgPQus-IP",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        "dep",
         "LICENSE",
     },
 }
