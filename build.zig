@@ -4,6 +4,20 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const target_supported = switch (target.result.os.tag) {
+        .windows => switch (target.result.cpu.arch) {
+            .aarch64 => true,
+            .x86_64 => true,
+            .x86 => true,
+            else => false,
+        },
+        else => false,
+    };
+    if (!target_supported) {
+        b.default_step.dependOn(&b.addFail("npcap: unsupported target").step);
+        return;
+    }
+
     const npcap_sdk = b.dependency("npcap_sdk", .{ .target = target, .optimize = optimize });
 
     const npcap = b.addModule("npcap", .{
@@ -39,8 +53,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .root_source_file = npcap_sdk.path("Include/pcap/pcap.h"),
+        .root_source_file = npcap_sdk.path("Include/pcap.h"),
     });
+    translate_c.addIncludePath(npcap_sdk.path("Include/"));
     npcap.addImport("npcap_sdk", translate_c.createModule());
 
     const lib_unit_tests = b.addTest(.{
@@ -49,4 +64,7 @@ pub fn build(b: *std.Build) void {
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
+
+    // run tests by default
+    // b.default_step.dependOn(&run_lib_unit_tests.step);
 }
