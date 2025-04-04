@@ -1,21 +1,17 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const target_supported = switch (target.result.os.tag) {
+    switch (target.result.os.tag) {
         .windows => switch (target.result.cpu.arch) {
-            .aarch64 => true,
-            .x86_64 => true,
-            .x86 => true,
-            else => false,
+            .aarch64 => {},
+            .x86_64 => {},
+            .x86 => {},
+            else => return error.UnsupportedTarget,
         },
-        else => false,
-    };
-    if (!target_supported) {
-        b.default_step.dependOn(&b.addFail("npcap: unsupported target").step);
-        return;
+        else => return error.UnsupportedTarget,
     }
 
     const npcap_sdk = b.dependency("npcap_sdk", .{ .target = target, .optimize = optimize });
@@ -64,7 +60,4 @@ pub fn build(b: *std.Build) void {
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
-
-    // run tests by default
-    // b.default_step.dependOn(&run_lib_unit_tests.step);
 }
